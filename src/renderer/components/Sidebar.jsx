@@ -47,6 +47,9 @@ export default function Sidebar() {
               <div className="stat-row"><span>Git</span><span className="stat-val">7 工具</span></div>
               <div className="stat-row"><span>Web</span><span className="stat-val">2 工具</span></div>
               <div className="stat-row"><span>测试</span><span className="stat-val">3 工具</span></div>
+              <div className="stat-row"><span>重构/分析</span><span className="stat-val">3 工具</span></div>
+              <div className="stat-row"><span>知识图谱</span><span className="stat-val">3 工具</span></div>
+              <div className="stat-row"><span>安全/基准</span><span className="stat-val">5 工具</span></div>
             </div>
           </div>
 

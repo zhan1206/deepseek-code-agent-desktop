@@ -7,15 +7,22 @@ const TOOL_ICONS = {
   git_status: '📊', git_diff: '📑', git_commit: '💾', git_log: '📜',
   git_branch: '🌿', git_checkout: '🔀',
   web_fetch: '🌐', read_docs: '📚',
-  run_test: '🧪', get_coverage: '📈',
+  run_test: '🧪', get_coverage: '📈', generate_tests: '🤖', run_test_suite: '🧪',
   get_symbols: '🏷️', find_references: '↩️', go_to_definition: '🎯',
   get_hover_info: 'ℹ️', get_diagnostics: '🔎',
+  auto_refactor: '♻️', arch_check: '🏗️', scan_security: '🛡️',
+  init_benchmark: '📊', compare_benchmark: '📉', benchmark_status: '📈',
+  knowledge_query: '🧠', knowledge_search: '🔍', knowledge_stats: '📊',
   default: '🔧',
 }
 
 const TOOL_COLORS = {
   read_file: '#4CAF50', write_file: '#2196F3', edit_file: '#FF9800',
   run_shell: '#F44336', git_status: '#9C27B0', web_fetch: '#00BCD4',
+  auto_refactor: '#a371f7', arch_check: '#d29922', scan_security: '#f85149',
+  generate_tests: '#3fb950', run_test_suite: '#58a6ff',
+  init_benchmark: '#9C27B0', compare_benchmark: '#d29922', benchmark_status: '#58a6ff',
+  knowledge_query: '#a371f7', knowledge_search: '#58a6ff', knowledge_stats: '#9C27B0',
   default: '#607D8B',
 }
 

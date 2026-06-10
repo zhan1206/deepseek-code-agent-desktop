@@ -507,3 +507,159 @@ body {
 
 /* Phase 2 additions */
 .btn-sm { padding: 4px 10px !important; font-size: 12px !important; }
+
+/* ── v2.0 Status Bar ──────────────────────────────────────────────── */
+.v2-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  min-height: 32px;
+}
+
+/* ── Context Budget Bar ────────────────────────────────────────────── */
+.context-budget-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.context-budget-icon { font-size: 13px; }
+.context-budget-label { color: var(--text-secondary); }
+.context-budget-track {
+  width: 80px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.context-budget-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+.context-budget-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 600; min-width: 30px; }
+.context-budget-stage { font-size: 11px; }
+.context-budget-detail { color: var(--text-muted); font-size: 10px; font-family: var(--font-mono); }
+
+/* ── Concurrent Tools Bar ──────────────────────────────────────────── */
+.concurrent-tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.concurrent-tools-icon { font-size: 13px; }
+.concurrent-tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 11px;
+  background: var(--bg-secondary);
+}
+.concurrent-tool-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.concurrent-tool-name { font-family: var(--font-mono); color: var(--text-primary); }
+.concurrent-tool-spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--border);
+  border-top-color: #58a6ff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ── Test Loop Progress ──────────────────────────────────────────── */
+.test-loop-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.test-loop-icon { font-size: 13px; }
+.test-loop-label { font-weight: 600; }
+.test-loop-rounds { color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; }
+.test-loop-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.test-loop-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1s infinite;
+}
+.test-loop-dot:nth-child(2) { animation-delay: 0.2s; }
+.test-loop-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* ── Security Scan Banner ──────────────────────────────────────────── */
+.security-scan-banner {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  max-width: 90vw;
+  max-height: 40vh;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+  z-index: 500;
+  overflow-y: auto;
+}
+.security-critical { border-color: var(--red); }
+.security-warning { border-color: var(--orange); }
+.security-scan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+}
+.security-scan-icon { font-size: 18px; }
+.security-scan-title { flex: 1; font-size: 13px; font-weight: 600; }
+.security-blocked { color: var(--red); margin-left: 6px; }
+.security-scan-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 14px;
+}
+.security-scan-dismiss:hover { color: var(--text-primary); }
+.security-scan-findings { padding: 8px 14px; display: flex; flex-direction: column; gap: 4px; }
+.security-finding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-left: 3px solid;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.security-finding-severity { font-weight: 700; min-width: 42px; }
+.security-finding-rule { color: var(--text-secondary); font-family: var(--font-mono); }
+.security-finding-file { color: var(--text-muted); font-family: var(--font-mono); margin-left: auto; }
+.security-finding-desc { flex: 1; color: var(--text-secondary); }

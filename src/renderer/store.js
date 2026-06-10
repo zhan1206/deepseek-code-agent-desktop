@@ -5,7 +5,7 @@ export function createMessage(role, content, extra = {}) {
   return {
     id: Math.random().toString(36).slice(2),
     role,           // 'user' | 'assistant' | 'tool_result'
-    content,         // string
+    content,
     timestamp: Date.now(),
     thinking: null,
     toolCalls: null,
@@ -36,6 +36,18 @@ export const useStore = create((set, get) => ({
   terminalOutput: [],
   showTerminal: false,
 
+  // ── v2.0: 上下文预算 ──────────────────────────────────────────────────
+  contextBudget: null,  // { used, total, stage } | null
+
+  // ── v2.0: 并发工具状态 ────────────────────────────────────────────────
+  activeTools: {},  // { [toolCallId]: { name, status: 'running'|'done'|'error', startTime } }
+
+  // ── v2.0: 安全扫描 ─────────────────────────────────────────────────────
+  securityScanResult: null,  // { findings: [...], blocked: bool }
+
+  // ── v2.0: 自适应测试循环 ─────────────────────────────────────────────
+  testLoopStatus: null,  // { round, maxRounds, status: 'generating'|'running'|'fixing'|'passed'|'failed' }
+
   // ── 操作 ────────────────────────────────────────────────────────────
   setApiKey: (key) => set({ apiKey: key }),
   setProjectPath: (path) => set({ projectPath: path }),
@@ -49,7 +61,6 @@ export const useStore = create((set, get) => ({
     if (!apiKey) throw new Error('No API Key')
     set({ connecting: true })
     try {
-      // 通过后端 HTTP 创建 session
       const resp = await fetch('http://localhost:8000/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,21 +95,60 @@ export const useStore = create((set, get) => ({
     messages: s.messages.map((m) => m.id === id ? { ...m, status } : m)
   })),
 
-  addToolResult: (toolCallId, toolName, result, success) => set((s) => ({
-    messages: [
-      ...s.messages,
-      {
-        id: Math.random().toString(36).slice(2),
-        role: 'tool_result',
-        content: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
-        timestamp: Date.now(),
-        status: 'done',
-        toolCallId,
-        toolName,
-        success,
-      }
-    ]
+  addToolResult: (toolCallId, toolName, result, success) => set((s) => {
+    // 更新 activeTools 状态
+    const updatedActiveTools = { ...s.activeTools }
+    if (updatedActiveTools[toolCallId]) {
+      updatedActiveTools[toolCallId] = { ...updatedActiveTools[toolCallId], status: success ? 'done' : 'error' }
+    }
+    return {
+      messages: [
+        ...s.messages,
+        {
+          id: Math.random().toString(36).slice(2),
+          role: 'tool_result',
+          content: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
+          timestamp: Date.now(),
+          status: 'done',
+          toolCallId,
+          toolName,
+          success,
+        }
+      ],
+      activeTools: updatedActiveTools,
+    }
+  }),
+
+  // ── v2.0: 并发工具跟踪 ─────────────────────────────────────────────
+  trackToolStart: (toolCallId, name) => set((s) => ({
+    activeTools: { ...s.activeTools, [toolCallId]: { name, status: 'running', startTime: Date.now() } }
   })),
+
+  trackToolEnd: (toolCallId) => set((s) => {
+    const updated = { ...s.activeTools }
+    if (updated[toolCallId]) {
+      updated[toolCallId] = { ...updated[toolCallId], status: 'done' }
+    }
+    // 3秒后清理
+    setTimeout(() => {
+      set((st) => {
+        const u = { ...st.activeTools }
+        delete u[toolCallId]
+        return { activeTools: u }
+      })
+    }, 3000)
+    return { activeTools: updated }
+  }),
+
+  // ── v2.0: 上下文预算 ──────────────────────────────────────────────────
+  setContextBudget: (budget) => set({ contextBudget: budget }),
+
+  // ── v2.0: 安全扫描 ──────────────────────────────────────────────────
+  setSecurityScan: (result) => set({ securityScanResult: result }),
+  clearSecurityScan: () => set({ securityScanResult: null }),
+
+  // ── v2.0: 测试循环 ──────────────────────────────────────────────────
+  setTestLoopStatus: (status) => set({ testLoopStatus: status }),
 
   // ── Diff ────────────────────────────────────────────────────────────
   addDiffPreview: (preview) => set((s) => ({
@@ -123,7 +173,9 @@ export const useStore = create((set, get) => ({
 
   // ── 发送消息 ────────────────────────────────────────────────────────
   sendMessage: async (text) => {
-    const { sessionId, addMessage, appendContent, setMessageStatus, addToolResult, addDiffPreview } = get()
+    const { sessionId, addMessage, appendContent, setMessageStatus, addToolResult,
+            addDiffPreview, trackToolStart, trackToolEnd, setContextBudget,
+            setSecurityScan, setTestLoopStatus } = get()
     if (!text.trim()) return
 
     // 1. 添加用户消息
@@ -150,15 +202,10 @@ export const useStore = create((set, get) => ({
       sid, text,
       {
         onChunk: (msg) => {
-          if (msg.content !== undefined) {
-            if (msg.content === '') {
-              // tool_call 增量
-            } else {
-              appendContent(assistantId, msg.content)
-            }
+          if (msg.content !== undefined && msg.content !== '') {
+            appendContent(assistantId, msg.content)
           }
           if (msg.tool_calls) {
-            // 先显示工具调用卡片
             const tcId = Math.random().toString(36).slice(2)
             addMessage({
               role: 'assistant',
@@ -171,12 +218,32 @@ export const useStore = create((set, get) => ({
           if (msg.diff_preview) {
             addDiffPreview(msg.diff_preview)
           }
+          // v2.0: 并发工具状态
+          if (msg.tool_start) {
+            trackToolStart(msg.tool_call_id || msg.tool_start.id, msg.tool_start.name)
+          }
+          if (msg.tool_end) {
+            trackToolEnd(msg.tool_call_id || msg.tool_end.id)
+          }
+          // v2.0: 上下文预算
+          if (msg.context_budget) {
+            setContextBudget(msg.context_budget)
+          }
+          // v2.0: 安全扫描
+          if (msg.security_scan) {
+            setSecurityScan(msg.security_scan)
+          }
+          // v2.0: 测试循环
+          if (msg.test_loop) {
+            setTestLoopStatus(msg.test_loop)
+          }
         },
         onApprovalRequest: (approval) => {
           get().setPendingApproval(approval)
         },
         onDone: () => {
           setMessageStatus(assistantId, 'done')
+          set({ contextBudget: null, testLoopStatus: null })
         },
         onError: (err) => {
           appendContent(assistantId, '\n[错误] ' + err)
@@ -196,6 +263,7 @@ function streamAgent(sessionId, task, callbacks) {
     ws = new WebSocket(`ws://localhost:8000/ws/${sessionId}`)
 
     ws.onopen = () => {
+      useStore.getState().setWsConnected(true)
       ws.send(JSON.stringify({ type: 'run', task }))
     }
 
@@ -222,7 +290,6 @@ function streamAgent(sessionId, task, callbacks) {
     }
 
     ws.onerror = () => { onError('WebSocket 连接失败') }
-
     ws.onclose = () => { useStore.getState().setWsConnected(false) }
   } catch (e) {
     onError(e.message)

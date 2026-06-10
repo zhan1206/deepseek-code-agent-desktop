@@ -8,10 +8,19 @@ const DANGER_LABELS = {
 }
 
 export default function ApprovalDialog({ approval, onApprove, onReject }) {
-  const { tool, args = {}, danger_level: dl = 0, approval_id: id } = approval
+  const { tool, args = {}, danger_level: dl = 0, approval_id: id, read_only: readOnly = false } = approval
   const [modified, setModified] = useState(null)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(JSON.stringify(args, null, 2))
+
+  // v2.0: 只读工具自动跳过审批
+  React.useEffect(() => {
+    if (readOnly) {
+      onApprove(null)
+    }
+  }, [readOnly])
+
+  if (readOnly) return null
 
   const [label, color] = DANGER_LABELS[dl] || DANGER_LABELS[0]
 
