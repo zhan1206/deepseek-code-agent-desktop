@@ -787,3 +787,154 @@ body {
   text-align: center;
   padding: 8px;
 }
+
+/* ── v2-status-actions ──────────────────────────────────────────── */
+.v2-status-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.v2-status-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.v2-status-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ── Debug Panel ──────────────────────────────────────────────── */
+.debug-panel {
+  width: 280px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.debug-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+.debug-icon { font-size: 14px; }
+.debug-title { font-size: 12px; font-weight: 700; flex: 1; }
+.debug-status { font-size: 11px; color: var(--text-secondary); }
+.debug-status.active { color: var(--green); }
+.debug-actions { display: flex; gap: 3px; }
+.debug-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.debug-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.debug-stop-btn:hover { color: var(--red); }
+.debug-body { flex: 1; overflow-y: auto; padding: 8px; }
+.debug-section { margin-bottom: 12px; }
+.debug-section-title { font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.05em; }
+.debug-scope { margin-bottom: 6px; }
+.debug-scope-label { font-size: 11px; color: var(--accent); display: block; margin-bottom: 2px; }
+.debug-vars { padding-left: 14px; }
+.debug-var { display: flex; gap: 4px; font-size: 11px; font-family: var(--font-mono); padding: 1px 0; }
+.debug-var-name { color: var(--text-primary); }
+.debug-var-eq { color: var(--text-muted); }
+.debug-var-value { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.debug-frame { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
+.debug-frame-fn { color: var(--accent); font-family: var(--font-mono); }
+.debug-frame-loc { color: var(--text-muted); font-family: var(--font-mono); }
+
+/* ── Feedback Dialog ──────────────────────────────────────────── */
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.feedback-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 440px;
+  box-shadow: var(--shadow);
+}
+.feedback-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 14px;
+}
+.feedback-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+}
+.feedback-body { padding: 14px 18px; }
+.feedback-textarea {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+}
+.feedback-textarea:focus { border-color: var(--accent); }
+.feedback-options {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.feedback-option { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.feedback-option input { accent-color: var(--accent); }
+.feedback-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+.feedback-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+.feedback-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  justify-content: center;
+  font-size: 14px;
+}
+.feedback-success-icon { font-size: 20px; }
