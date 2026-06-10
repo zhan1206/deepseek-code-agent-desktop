@@ -1,6 +1,6 @@
 {
   "name": "deepseek-code-agent-desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "DeepSeek Code Agent 桌面端 — Electron + React",
   "main": "out/main/index.js",
   "scripts": {
