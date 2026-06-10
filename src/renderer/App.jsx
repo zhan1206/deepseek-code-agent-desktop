@@ -11,6 +11,7 @@ import TestLoopProgress from './components/TestLoopProgress'
 import SecurityScanBanner from './components/SecurityScanBanner'
 import DebugPanel from './components/DebugPanel'
 import FeedbackDialog from './components/FeedbackDialog'
+import { initTheme } from './themes'
 
 export default function App() {
   const { backendReady, projectPath, apiKey, diffPreviews, contextBudget, activeTools, securityScanResult, testLoopStatus, clearSecurityScan } = useStore()
@@ -19,6 +20,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false)
 
   useEffect(() => {
+    initTheme()
     if (window.electronAPI) {
       window.electronAPI.onBackendStatus((data) => {
         useStore.getState().setBackendReady(data.ready)

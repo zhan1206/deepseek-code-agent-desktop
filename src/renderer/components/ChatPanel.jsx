@@ -1,7 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { useStore } from '../store'
 import ToolCallCard from './ToolCallCard'
 import ApprovalDialog from './ApprovalDialog'
+import VoiceInput from './VoiceInput'
+import ImagePasteHandler from './ImagePasteHandler'
 
 function MessageBubble({ msg }) {
   const isUser = msg.role === 'user'
@@ -83,7 +85,16 @@ export default function ChatPanel() {
     clearPendingApproval()
   }
 
+  const handleVoiceTranscribed = useCallback((text) => {
+    setInput(prev => prev ? prev + ' ' + text : text)
+  }, [])
+
+  const handleImageAnalyzed = useCallback((description, filename) => {
+    setInput(prev => prev ? prev + '\n[图片分析 - ' + filename + ']: ' + description : '[图片分析]: ' + description)
+  }, [])
+
   return (
+    <ImagePasteHandler onImage={handleImageAnalyzed}>
     <div className="chat-panel">
       {/* 工具栏 */}
       <div className="chat-toolbar">
@@ -128,6 +139,7 @@ export default function ChatPanel() {
             placeholder="输入任务（Enter 发送，Shift+Enter 换行）..."
             rows={3}
           />
+          <VoiceInput onTranscribed={handleVoiceTranscribed} />
           <button type="submit" className="chat-send-btn" disabled={!input.trim()}>
             ▶ 发送
           </button>
@@ -143,5 +155,6 @@ export default function ChatPanel() {
         />
       )}
     </div>
+    </ImagePasteHandler>
   )
 }

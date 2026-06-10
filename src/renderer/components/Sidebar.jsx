@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useStore } from '../store'
 import SessionManager from './SessionManager'
+import ThemeSwitcher from './ThemeSwitcher'
 
 export default function Sidebar() {
   const { projectPath, backendReady, toggleTerminal } = useStore()
@@ -150,6 +151,11 @@ export default function Sidebar() {
 
           <div className="sidebar-section">
             <button className="sidebar-btn" onClick={toggleTerminal}>🖥 终端</button>
+          </div>
+
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">外观</div>
+            <ThemeSwitcher />
           </div>
         </>
       )}

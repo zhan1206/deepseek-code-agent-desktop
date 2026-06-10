@@ -938,3 +938,68 @@ body {
   font-size: 14px;
 }
 .feedback-success-icon { font-size: 20px; }
+
+/* ── Voice Input ──────────────────────────────────────────────── */
+.voice-input-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.voice-input-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.voice-input-btn.recording { border-color: var(--red); color: var(--red); animation: pulse-rec 1s infinite; }
+.voice-input-btn.transcribing { opacity: 0.6; cursor: wait; }
+@keyframes pulse-rec {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+/* ── Image Paste ───────────────────────────────────────────── */
+.image-paste-preview {
+  position: fixed;
+  bottom: 80px;
+  right: 80px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  box-shadow: var(--shadow);
+  z-index: 500;
+  animation: fadeIn 0.2s;
+}
+.image-paste-preview img { max-width: 200px; max-height: 150px; border-radius: 4px; }
+.image-paste-status { display: block; font-size: 11px; color: var(--text-muted); text-align: center; padding: 4px 0 2px; }
+
+/* ── Theme Switcher ──────────────────────────────────────────── */
+.theme-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px;
+}
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  transition: all 0.15s;
+}
+.theme-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.theme-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
+.theme-swatch { font-size: 13px; }
+.theme-label { flex: 1; }
