@@ -8,7 +8,11 @@
 
 const { app, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, Notification, dialog, safeStorage, shell } = require('electron')
 const path = require('path')
-const { spawn, execSync } = require('child_process')
+const { spawn, execFile } = require('child_process')
+const fs = require('fs')
+const logger = require('./utils/logger')
+const safeShell = require('./utils/safe-shell')
+const PythonChecker = require('./utils/python-check')
 
 // ── 状态 ────────────────────────────────────────────────────────────────────
 let mainWindow = null
@@ -18,35 +22,47 @@ let backendReady = false
 let backendPort = 8000
 let apiKey = ''
 
-// ── 路径解析 ────────────────────────────────────────────────────────────────
-const PYTHON = process.platform === 'win32'
-  ? 'C:\\Users\\朱子瞻\\AppData\\Local\\Programs\\Python\\Python312\\python.exe'
-  : 'python3'
+// ── 路径解析（环境变量优先） ────────────────────────────────────────────────
+const PYTHON = process.env.DEEPSEEK_PYTHON_PATH ||
+  (process.platform === 'win32' ? 'python.exe' : 'python3')
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
-// 找后端入口（development 时指向 deepseek-code-agent/src）
-const AGENT_ROOT = "C:\\Users\\朱子瞻\\.qclaw\\workspace\\deepseek-code-agent"
-const backendRoot = isDev
-  ? path.join(AGENT_ROOT, 'src', 'deepseek_agent')
-  : path.join(process.resourcesPath, 'deepseek_agent')
+// 后端路径：环境变量 > 开发默认 > 打包资源
+function resolveBackendRoot() {
+  if (process.env.DEEPSEEK_AGENT_ROOT) {
+    return path.resolve(process.env.DEEPSEEK_AGENT_ROOT)
+  }
+  if (isDev) {
+    const devPath = path.join(__dirname, '..', '..', '..', 'deepseek-code-agent', 'src', 'deepseek_agent')
+    if (fs.existsSync(devPath + path.sep + 'server') || fs.existsSync(devPath + '/server')) {
+      return devPath
+    }
+    // fallback 到环境变量指定的开发路径
+    return devPath
+  }
+  return path.join(process.resourcesPath, 'deepseek_agent')
+}
 
-const BACKEND_SERVER = path.join(backendRoot, 'server/app.py')
+const backendRoot = resolveBackendRoot()
+const BACKEND_SERVER = path.join(backendRoot, 'server', 'app.py')
+
+logger.info('app', `Python: ${PYTHON}, Backend: ${BACKEND_SERVER}, Dev: ${isDev}`)
 
 // ── API Key 安全存储 ────────────────────────────────────────────────────────
 function loadApiKey() {
   try {
     const stored = process.env.DEEPSEEK_API_KEY || ''
-    if (stored) { apiKey = stored; return true }
-    // 尝试从文件解密（首次启动时文件不存在则返回空）
+    if (stored) { apiKey = stored; logger.info('app', 'API Key loaded from env'); return true }
     const keyPath = path.join(app.getPath('userData'), 'api_key.enc')
-    if (require('fs').existsSync(keyPath)) {
-      const encrypted = require('fs').readFileSync(keyPath)
+    if (fs.existsSync(keyPath)) {
+      const encrypted = fs.readFileSync(keyPath)
       if (safeStorage.isEncryptionAvailable()) {
         apiKey = safeStorage.decryptString(encrypted)
+        logger.info('app', 'API Key loaded from encrypted storage')
       }
     }
-  } catch (e) { console.error('loadApiKey:', e.message) }
+  } catch (e) { logger.error('app', 'loadApiKey failed', e) }
   return false
 }
 
@@ -54,17 +70,43 @@ function saveApiKey(key) {
   try {
     if (safeStorage.isEncryptionAvailable()) {
       const encrypted = safeStorage.encryptString(key)
-      require('fs').writeFileSync(path.join(app.getPath('userData'), 'api_key.enc'), encrypted)
+      fs.writeFileSync(path.join(app.getPath('userData'), 'api_key.enc'), encrypted)
     } else {
       process.env.DEEPSEEK_API_KEY = key
     }
     apiKey = key
+    logger.info('app', 'API Key saved')
     return true
-  } catch (e) { console.error('saveApiKey:', e.message); return false }
+  } catch (e) { logger.error('app', 'saveApiKey failed', e); return false }
 }
 
 // ── Python 后端管理 ──────────────────────────────────────────────────────────
 function startBackend() {
+  let interval = null
+
+  function onTimeout(url, resolve) {
+    logger.error('backend', 'Startup timeout after 15s')
+    if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, error: '启动超时' })
+    resolve(false)
+  }
+
+  function doHealthCheck(url, interval, resolve) {
+    try {
+      const http = require('http')
+      http.get(url, (r) => {
+        if (r.statusCode === 200) {
+          backendReady = true
+          clearInterval(interval)
+          logger.info('backend', 'Health check passed')
+          if (mainWindow) mainWindow.webContents.send('backend:status', { ready: true })
+          resolve(true)
+        }
+      }).on('error', () => {})
+    } catch (err) {
+      logger.debug('backend', 'Health check error: ' + err.message)
+    }
+  }
+
   return new Promise((resolve) => {
     if (backendProcess) { resolve(true); return }
 
@@ -87,48 +129,37 @@ function startBackend() {
       const line = d.toString()
       if (!backendReady && (line.includes('Uvicorn running') || line.includes('Application startup complete') || line.includes('8000'))) {
         backendReady = true
-        console.log('[Backend] ready')
+        logger.info('backend', 'Backend started')
         if (mainWindow) mainWindow.webContents.send('backend:status', { ready: true })
         resolve(true)
       }
-      if (process.env.DEBUG) process.stdout.write('[py] ' + line)
+      logger.debug('backend', line.trim())
     })
 
     backendProcess.stderr.on('data', (d) => {
-      if (process.env.DEBUG) process.stderr.write('[py:err] ' + d.toString())
+      logger.warn('backend', 'stderr: ' + d.toString().trim())
     })
 
     backendProcess.on('exit', (code) => {
-      console.log('[Backend] exited with code', code)
+      logger.info('backend', 'Exited with code ' + code)
       backendReady = false
       backendProcess = null
       if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, code })
     })
 
     // 轮询健康检查（最多 15 秒）
+    const healthUrl = 'http://localhost:' + backendPort + '/health'
+    const maxAttempts = 15
     let attempts = 0
-    const checkInterval = setInterval(async () => {
+    const interval = setInterval(function check() {
       attempts++
-      if (backendReady) { clearInterval(checkInterval); return }
-      if (attempts > 15) {
-        clearInterval(checkInterval)
-        console.error('[Backend] failed to start after 15s')
-        if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, error: '启动超时' })
-        resolve(false)
+      if (backendReady) { clearInterval(interval); return }
+      if (attempts > maxAttempts) {
+        clearInterval(interval)
+        onTimeout(healthUrl, resolve)
         return
       }
-      // 尝试 HTTP 检查
-      try {
-        const http = require('http')
-        http.get(`http://localhost:${backendPort}/health`, (r) => {
-          if (r.statusCode === 200) {
-            backendReady = true
-            clearInterval(checkInterval)
-            if (mainWindow) mainWindow.webContents.send('backend:status', { ready: true })
-            resolve(true)
-          }
-        }).on('error', () => {})
-      } catch {}
+      doHealthCheck(healthUrl, interval, resolve)
     }, 1000)
   })
 }
@@ -242,22 +273,20 @@ function setupIpc() {
     return true
   })
 
-  // Shell 命令（渲染进程通过主进程执行，避免直接暴露 child_process）
+  // Shell 命令（通过安全执行器，白名单 + execFile，避免 shell 注入）
   ipcMain.handle('shell:run', async (_, { command, cwd }) => {
-    return new Promise((resolve) => {
-      try {
-        const r = execSync(command, {
-          cwd: cwd || undefined,
-          encoding: 'utf-8',
-          timeout: 30000,
-          shell: true,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        })
-        resolve({ stdout: r.stdout || r, stderr: r.stderr || '' })
-      } catch (e) {
-        resolve({ stdout: e.stdout || '', stderr: e.stderr || e.message })
+    try {
+      const result = await safeShell.execute(command, cwd || undefined)
+      return { stdout: result.stdout, stderr: result.stderr, success: true }
+    } catch (e) {
+      logger.warn('shell', `Command rejected: ${command}`)
+      return {
+        stdout: e.stdout || '',
+        stderr: e.stderr || e.message,
+        success: false,
+        error: e.message
       }
-    })
+    }
   })
 
   // 通知
@@ -289,6 +318,33 @@ function registerShortcuts() {
 app.whenReady().then(async () => {
   loadApiKey()
   setupIpc()
+
+  // 启动前检查 Python 环境
+  const checker = new PythonChecker(PYTHON)
+  const versionCheck = checker.checkVersion()
+  if (!versionCheck.ok) {
+    logger.error('app', versionCheck.message)
+    dialog.showErrorBox('Python 环境错误', versionCheck.message + '\n请设置 DEEPSEEK_PYTHON_PATH 环境变量指向 Python 3.9+ 可执行文件')
+    app.quit()
+    return
+  }
+  const pkgCheck = checker.checkPackages()
+  if (!pkgCheck.ok) {
+    logger.warn('app', pkgCheck.message)
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      message: pkgCheck.message,
+      buttons: ['自动修复', '手动安装', '忽略并继续'],
+      defaultId: 0,
+    })
+    if (choice === 0) {
+      const repair = checker.autoRepair()
+      if (!repair.ok) {
+        dialog.showErrorBox('修复失败', repair.message)
+      }
+    }
+  }
+
   createWindow()
   createTray()
   registerShortcuts()
