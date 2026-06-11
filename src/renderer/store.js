@@ -48,6 +48,14 @@ export const useStore = create((set, get) => ({
   // ── v2.0: 自适应测试循环 ─────────────────────────────────────────────
   testLoopStatus: null,  // { round, maxRounds, status: 'generating'|'running'|'fixing'|'passed'|'failed' }
 
+  // ── v2.1: 工具裁剪级别 ───────────────────────────────────────────────
+  toolPruningLevel: 0,  // 0=全量, 1=精简, 2=核心
+  totalTools: 0,
+  activeToolsCount: 0,
+
+  // ── v2.1: 成本追踪 ──────────────────────────────────────────────────
+  costData: null,  // { breakdown: {...}, total_cost: float }
+
   // ── 操作 ────────────────────────────────────────────────────────────
   setApiKey: (key) => set({ apiKey: key }),
   setProjectPath: (path) => set({ projectPath: path }),
@@ -150,6 +158,12 @@ export const useStore = create((set, get) => ({
   // ── v2.0: 测试循环 ──────────────────────────────────────────────────
   setTestLoopStatus: (status) => set({ testLoopStatus: status }),
 
+  // ── v2.1: 工具裁剪 ──────────────────────────────────────────────────
+  setToolPruning: (level, total, active) => set({ toolPruningLevel: level, totalTools: total, activeToolsCount: active }),
+
+  // ── v2.1: 成本 ──────────────────────────────────────────────────────
+  setCostData: (data) => set({ costData: data }),
+
   // ── Diff ────────────────────────────────────────────────────────────
   addDiffPreview: (preview) => set((s) => ({
     diffPreviews: [...s.diffPreviews, preview],
@@ -236,6 +250,14 @@ export const useStore = create((set, get) => ({
           // v2.0: 测试循环
           if (msg.test_loop) {
             setTestLoopStatus(msg.test_loop)
+          }
+          // v2.1: 工具裁剪
+          if (msg.tool_pruning !== undefined) {
+            setToolPruning(msg.tool_pruning.level || 0, msg.tool_pruning.total || 0, msg.tool_pruning.active || 0)
+          }
+          // v2.1: 成本更新
+          if (msg.cost_data) {
+            setCostData(msg.cost_data)
           }
         },
         onApprovalRequest: (approval) => {

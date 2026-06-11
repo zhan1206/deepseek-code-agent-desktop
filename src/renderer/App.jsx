@@ -11,13 +11,19 @@ import TestLoopProgress from './components/TestLoopProgress'
 import SecurityScanBanner from './components/SecurityScanBanner'
 import DebugPanel from './components/DebugPanel'
 import FeedbackDialog from './components/FeedbackDialog'
+import ModelManager from './components/ModelManager'
+import ToolPruningIndicator from './components/ToolPruningIndicator'
+import FIMCompletionPopup from './components/FIMCompletionPopup'
 import { initTheme } from './themes'
 
 export default function App() {
-  const { backendReady, projectPath, apiKey, diffPreviews, contextBudget, activeTools, securityScanResult, testLoopStatus, clearSecurityScan } = useStore()
+  const { backendReady, projectPath, apiKey, diffPreviews, contextBudget, activeTools, securityScanResult, testLoopStatus, toolPruningLevel, totalTools, activeToolsCount, clearSecurityScan } = useStore()
   const [setupDone, setSetupDone] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showModelManager, setShowModelManager] = useState(false)
+  const [showFIMPopup, setShowFIMPopup] = useState(false)
+  const [editorRef] = useState({ current: null })
 
   useEffect(() => {
     initTheme()
@@ -65,6 +71,9 @@ export default function App() {
           <ConcurrentToolsBar activeTools={activeTools} />
           <TestLoopProgress loop={testLoopStatus} />
           <div className="v2-status-actions">
+            <ToolPruningIndicator pruningLevel={toolPruningLevel} totalTools={totalTools} activeTools={activeToolsCount} />
+            <button className="v2-status-btn" onClick={() => setShowModelManager(true)} title="模型管理器">🤖</button>
+            <button className="v2-status-btn" onClick={() => setShowFIMPopup(true)} title="FIM 补全">⚡</button>
             <button className="v2-status-btn" onClick={() => setShowDebug(!showDebug)} title="调试器">🐛</button>
             <button className="v2-status-btn" onClick={() => setShowFeedback(true)} title="报告问题">📢</button>
           </div>
@@ -86,6 +95,12 @@ export default function App() {
       )}
       {showFeedback && (
         <FeedbackDialog onSubmit={handleFeedbackSubmit} onDismiss={() => setShowFeedback(false)} />
+      )}
+      {showModelManager && (
+        <ModelManager onDismiss={() => setShowModelManager(false)} />
+      )}
+      {showFIMPopup && (
+        <FIMCompletionPopup editorRef={editorRef} onDismiss={() => setShowFIMPopup(false)} />
       )}
     </div>
   )
