@@ -82,88 +82,27 @@ function saveApiKey(key) {
 
 // ── Python 后端管理 ──────────────────────────────────────────────────────────
 function startBackend() {
-  let interval = null
-
-  function onTimeout(url, resolve) {
-    logger.error('backend', 'Startup timeout after 15s')
-    if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, error: '启动超时' })
-    resolve(false)
-  }
-
-  function doHealthCheck(url, interval, resolve) {
-    try {
-      const http = require('http')
-      http.get(url, (r) => {
-        if (r.statusCode === 200) {
-          backendReady = true
-          clearInterval(interval)
-          logger.info('backend', 'Health check passed')
-          if (mainWindow) mainWindow.webContents.send('backend:status', { ready: true })
-          resolve(true)
-        }
-      }).on('error', () => {})
-    } catch (err) {
-      logger.debug('backend', 'Health check error: ' + err.message)
-    }
-  }
-
   return new Promise((resolve) => {
-    if (backendProcess) { resolve(true); return }
-
-    const env = {
-      ...process.env,
-      DEEPSEEK_API_KEY: apiKey,
-      PYTHONPATH: backendRoot,
-      PYTHONIOENCODING: 'utf-8',
-    }
-
-    backendProcess = spawn(PYTHON, [BACKEND_SERVER], {
-      cwd: backendRoot,
-      env,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      detached: false,
-      shell: false,
-    })
-
-    backendProcess.stdout.on('data', (d) => {
-      const line = d.toString()
-      if (!backendReady && (line.includes('Uvicorn running') || line.includes('Application startup complete') || line.includes('8000'))) {
+    const url = 'http://127.0.0.1:' + backendPort + '/health'
+    const http = require('http')
+    http.get(url, (r) => {
+      if (r.statusCode === 200) {
         backendReady = true
-        logger.info('backend', 'Backend started')
+        logger.info('backend', 'Connected to backend')
         if (mainWindow) mainWindow.webContents.send('backend:status', { ready: true })
         resolve(true)
+      } else {
+        logger.error('backend', 'Backend not ready (status ' + r.statusCode + ')')
+        if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, error: '后端未就绪' })
+        resolve(false)
       }
-      logger.debug('backend', line.trim())
+    }).on('error', (err) => {
+      logger.error('backend', 'Backend not running: ' + err.message)
+      if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, error: '后端未启动，请先手动启动后端' })
+      resolve(false)
     })
-
-    backendProcess.stderr.on('data', (d) => {
-      logger.warn('backend', 'stderr: ' + d.toString().trim())
-    })
-
-    backendProcess.on('exit', (code) => {
-      logger.info('backend', 'Exited with code ' + code)
-      backendReady = false
-      backendProcess = null
-      if (mainWindow) mainWindow.webContents.send('backend:status', { ready: false, code })
-    })
-
-    // 轮询健康检查（最多 15 秒）
-    const healthUrl = 'http://localhost:' + backendPort + '/health'
-    const maxAttempts = 15
-    let attempts = 0
-    const interval = setInterval(function check() {
-      attempts++
-      if (backendReady) { clearInterval(interval); return }
-      if (attempts > maxAttempts) {
-        clearInterval(interval)
-        onTimeout(healthUrl, resolve)
-        return
-      }
-      doHealthCheck(healthUrl, interval, resolve)
-    }, 1000)
   })
 }
-
 function stopBackend() {
   if (backendProcess) {
     backendProcess.kill('SIGTERM')
